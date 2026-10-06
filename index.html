@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BeautiQ — إدارة العيادات ومراكز التجميل</title>
+<script>
+/* تطبيق الثيم المحفوظ قبل رسم الصفحة لمنع الوميض */
+try{
+  var _st=JSON.parse(localStorage.getItem("aureva.v1")||"{}");
+  var _th=(_st.settings&&_st.settings.theme)||"salon";
+  if(!_st.settings||(!_st.settings.faceV2&&_th==="dark")) _th="salon";
+  document.documentElement.setAttribute("data-theme",_th);
+}catch(e){document.documentElement.setAttribute("data-theme","salon")}
+</script>
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">💎</div>
+      <div class="brand-text">
+        <strong>BeautiQ</strong>
+        <span>BeautiQ · Clinic & Beauty</span>
+      </div>
+    </div>
+
+    <nav class="nav" id="mainNav">
+      <button class="nav-item active" data-view="dashboard"><span class="nav-ico">📊</span><span class="nav-lbl">لوحة التحكم<em>Dashboard</em></span></button>
+      <button class="nav-item" data-view="appointments"><span class="nav-ico">📅</span><span class="nav-lbl">المواعيد والحجوزات<em>Appointments</em></span></button>
+      <button class="nav-item" data-view="clients"><span class="nav-ico">👥</span><span class="nav-lbl">العملاء<em>Clients & Loyalty</em></span></button>
+      <button class="nav-item" data-view="services"><span class="nav-ico">💆</span><span class="nav-lbl">الخدمات<em>Services</em></span></button>
+      <button class="nav-item" data-view="inventory"><span class="nav-ico">📦</span><span class="nav-lbl">المخزون<em>Inventory</em></span></button>
+      <button class="nav-item" data-view="finance"><span class="nav-ico">💰</span><span class="nav-lbl">المالية والفواتير<em>Finance & POS</em></span></button>
+      <button class="nav-item" data-view="employees"><span class="nav-ico">👨‍⚕️</span><span class="nav-lbl">الموظفون<em>Staff</em></span></button>
+      <button class="nav-item" data-view="reports"><span class="nav-ico">📈</span><span class="nav-lbl">التقارير<em>Reports</em></span></button>
+      <button class="nav-item" data-view="settings"><span class="nav-ico">⚙️</span><span class="nav-lbl">الإعدادات<em>Settings</em></span></button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <button class="btn btn-primary btn-block side-cta" id="btnSideAdd">+ إضافة عميل</button>
+      <div class="stat-mini">
+        <div><b id="miniClients">0</b><span>عميل</span></div>
+        <div><b id="miniAppts">0</b><span>موعد اليوم</span></div>
+        <div><b id="miniInv">0</b><span>فاتورة</span></div>
+        <div><b id="miniLow">0</b><span>ناقص</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <button class="nav-toggle" id="navToggle" aria-label="القائمة">☰</button>
+
+  <!-- ===== Main ===== -->
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="viewTitle">لوحة التحكم</h1>
+        <p id="viewSub">Dashboard</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="search-global">
+          <input type="search" id="globalSearch" placeholder="بحث سريع… (عميل / فاتورة / خدمة)">
+        </div>
+        <button class="btn btn-ghost" id="btnTheme" title="تبديل الثيم">🎨 <span id="themeName">داكن</span></button>
+        <button class="btn btn-ghost" id="btnBackup" title="تصدير نسخة احتياطية">⬇️ تصدير</button>
+        <button class="btn btn-ghost" id="btnRestore" title="استيراد نسخة احتياطية">⬆️ استيراد</button>
+        <input type="file" id="fileRestore" accept="application/json" hidden>
+      </div>
+    </header>
+
+    <div class="views" id="views">
+
+      <!-- ============ DASHBOARD ============ -->
+      <section class="view active" id="view-dashboard">
+        <div class="cards" id="dashCards"></div>
+
+        <div class="dash-grid">
+          <div class="panel">
+            <div class="panel-hd">
+              <h2>جدول اليوم <em>Day schedule — appointments by staff</em></h2>
+              <button class="btn btn-sm btn-primary" onclick="App.go('appointments');setTimeout(()=>Appointments.form(),200)">+ حجز جديد</button>
+            </div>
+            <div class="panel-bd" id="dashSchedule"></div>
+          </div>
+
+          <div class="dash-side">
+            <div class="panel">
+              <div class="panel-hd">
+                <h2>الإحصائيات <em>Statistics overview</em></h2>
+                <div class="tabs" id="dashStatTabs">
+                  <button class="tab active" data-m="appts">مواعيد</button>
+                  <button class="tab" data-m="income">إيراد</button>
+                  <button class="tab" data-m="clients">عملاء</button>
+                </div>
+              </div>
+              <div class="panel-bd" id="dashStats"></div>
+            </div>
+
+            <div class="panel">
+              <div class="panel-hd">
+                <h2>توليد الإيرادات <em>Revenue generation — vs expenses</em></h2>
+              </div>
+              <div class="panel-bd" id="dashRevenue"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="panel">
+            <div class="panel-hd"><h2>إجراءات سريعة <em>Quick actions</em></h2></div>
+            <div class="panel-bd quick-actions">
+              <button class="qa" data-go="appointments" data-act="appt"><span>📅</span>حجز موعد<em>New appointment</em></button>
+              <button class="qa" data-go="finance" data-act="invoice"><span>🧾</span>فاتورة جديدة<em>New invoice</em></button>
+              <button class="qa" data-go="clients" data-act="client"><span>➕</span>إضافة عميل<em>Add client</em></button>
+              <button class="qa" data-go="finance" data-act="expense"><span>💸</span>تسجيل مصروف<em>Add expense</em></button>
+              <button class="qa" data-go="inventory" data-act="product"><span>📦</span>إدخال منتج<em>Add product</em></button>
+              <button class="qa" data-go="employees" data-act="staff"><span>👨‍⚕️</span>إضافة موظف<em>Add staff</em></button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd"><h2>آخر النشاطات <em>Activity log</em></h2></div>
+            <div class="panel-bd" id="dashActivity"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd"><h2>تنبيهات المخزون <em>Low stock alerts</em></h2>
+              <button class="btn btn-sm btn-ghost" onclick="App.go('inventory')">فتح المخزون</button>
+            </div>
+            <div class="panel-bd" id="dashAlerts"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ APPOINTMENTS ============ -->
+      <section class="view" id="view-appointments">
+        <div class="cards" id="apptStats"></div>
+
+        <div class="toolbar">
+          <div class="filters">
+            <div class="tabs" id="apptTabs" style="margin:0;border:0">
+              <button class="tab active" data-tab="day">عرض يومي<em>Day</em></button>
+              <button class="tab" data-tab="month">تقويم شهري<em>Month</em></button>
+            </div>
+          </div>
+          <div class="filters">
+            <select id="apptStaff"><option value="">كل الموظفين</option></select>
+            <button class="btn btn-soft" id="btnPrev">◀</button>
+            <button class="btn btn-soft" id="btnToday">اليوم</button>
+            <button class="btn btn-soft" id="btnNext">▶</button>
+            <span style="font-weight:800;min-width:150px;text-align:center" id="apptNavLabel">—</span>
+            <button class="btn btn-soft" id="btnPrintDay">🖨️ جدول اليوم</button>
+            <button class="btn btn-primary" id="btnAddAppt">+ حجز جديد</button>
+          </div>
+        </div>
+
+        <div id="apptBody"></div>
+      </section>
+
+      <!-- ============ CLIENTS ============ -->
+      <section class="view" id="view-clients">
+        <div class="cards" id="clientStats"></div>
+        <div class="toolbar">
+          <div class="filters">
+            <input type="search" id="clientSearch" placeholder="ابحث بالاسم أو الهاتف…">
+            <select id="clientSource"><option value="">كل المصادر</option></select>
+          </div>
+          <div class="filters">
+            <button class="btn btn-primary" id="btnAddClient">+ عميل جديد</button>
+          </div>
+        </div>
+        <div class="grid-3" id="clientGrid"></div>
+      </section>
+
+      <!-- ============ SERVICES ============ -->
+      <section class="view" id="view-services">
+        <div class="cards" id="svStats"></div>
+        <div class="toolbar">
+          <div class="filters">
+            <input type="search" id="svSearch" placeholder="ابحث عن خدمة…">
+            <select id="svCat"><option value="">كل التخصصات</option></select>
+          </div>
+          <div class="filters">
+            <button class="btn btn-soft" id="btnPrintServices">🖨️ قائمة الأسعار</button>
+            <button class="btn btn-primary" id="btnAddService">+ خدمة جديدة</button>
+          </div>
+        </div>
+        <div class="grid-3" id="svGrid"></div>
+      </section>
+
+      <!-- ============ INVENTORY ============ -->
+      <section class="view" id="view-inventory">
+        <div class="cards" id="invStats"></div>
+        <div class="toolbar">
+          <div class="filters">
+            <input type="search" id="invSearch" placeholder="ابحث عن منتج…">
+            <select id="invCat"><option value="">كل الفئات</option></select>
+          </div>
+          <div class="filters">
+            <button class="btn btn-soft" id="invLowBtn">⚠️ منتجات ناقصة</button>
+            <button class="btn btn-soft" id="btnPrintLow">🖨️ تقرير النواقص</button>
+            <button class="btn btn-primary" id="btnAddProduct">+ منتج جديد</button>
+          </div>
+        </div>
+        <div class="grid-3" id="invGrid"></div>
+      </section>
+
+      <!-- ============ FINANCE ============ -->
+      <section class="view" id="view-finance">
+        <div class="cards" id="finStats"></div>
+
+        <div class="tabs" id="finTabs">
+          <button class="tab active" data-tab="invoices">الفواتير<em>Invoices</em></button>
+          <button class="tab" data-tab="expenses">المصروفات<em>Expenses</em></button>
+          <button class="tab" data-tab="summary">الملخص المالي<em>Summary</em></button>
+        </div>
+
+        <div class="toolbar" id="finToolbar">
+          <div class="filters" id="finFilters">
+            <input type="search" id="finSearch" placeholder="ابحث برقم الفاتورة أو اسم العميل…">
+            <select id="finMethod"><option value="">كل طرق الدفع</option></select>
+          </div>
+          <div class="filters">
+            <button class="btn btn-soft" id="btnAddExpense">💸 مصروف</button>
+            <button class="btn btn-primary" id="btnNewInvoice">+ فاتورة جديدة</button>
+          </div>
+        </div>
+
+        <div id="finBody"></div>
+      </section>
+
+      <!-- ============ EMPLOYEES ============ -->
+      <section class="view" id="view-employees">
+        <div class="cards" id="stStats"></div>
+        <div class="toolbar">
+          <div class="filters">
+            <input type="search" id="stSearch" placeholder="ابحث عن موظف…">
+            <select id="stRole"><option value="">كل المسميات</option></select>
+          </div>
+          <div class="filters">
+            <button class="btn btn-soft" id="btnCheckIn">🕐 حضور وانصراف</button>
+            <button class="btn btn-soft" id="btnPrintStaff">🖨️ قائمة الموظفين</button>
+            <button class="btn btn-primary" id="btnAddStaff">+ موظف جديد</button>
+          </div>
+        </div>
+        <div class="grid-3" id="stGrid"></div>
+      </section>
+
+      <!-- ============ REPORTS ============ -->
+      <section class="view" id="view-reports">
+        <div class="rep-head">
+          <div class="filters">
+            <label style="flex-direction:row;align-items:center;gap:8px">الفترة
+              <select id="repPeriod">
+                <option value="today">اليوم</option>
+                <option value="7">آخر 7 أيام</option>
+                <option value="30" selected>آخر 30 يوماً</option>
+                <option value="month">الشهر الحالي</option>
+                <option value="all">كل الفترات</option>
+              </select></label>
+          </div>
+          <div class="filters">
+            <button class="btn btn-primary" id="btnPrintReport">🖨️ طباعة التقرير الشامل</button>
+          </div>
+        </div>
+        <div class="cards" id="repStats"></div>
+        <div class="cards" id="repExtra"></div>
+        <div id="repBody"></div>
+      </section>
+
+      <!-- ============ SETTINGS ============ -->
+      <section class="view" id="view-settings">
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-hd"><h2>بيانات المركز <em>Center profile</em></h2></div>
+            <div class="panel-bd">
+              <div class="form-grid">
+                <label>اسم المركز<input type="text" id="setCenter" placeholder="مثال: مركز BeautiQ للتجميل"></label>
+                <label>الطبيب/المدير<input type="text" id="setDoctor" placeholder="مثال: د. سارة الجابر"></label>
+                <label>الهاتف<input type="tel" id="setPhoneS" placeholder="07XX XXX XXXX"></label>
+                <label>العنوان<input type="text" id="setAddress" placeholder="المدينة — الشارع"></label>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-hd"><h2>العملة والمالية <em>Currency & finance</em></h2></div>
+            <div class="panel-bd">
+              <div class="form-grid">
+                <label>العملة الافتراضية<select id="setCurrency">
+                  <option value="IQD">دينار عراقي (د.ع)</option>
+                  <option value="USD">دولار أمريكي ($)</option></select></label>
+                <label>سعر صرف الدولار (د.ع)<input type="number" id="setRate" min="1" step="1"></label>
+                <label>الضريبة %<input type="number" id="setTax" min="0" max="100" step="0.5"></label>
+                <label>نقطة ولاء لكل (د.ع)<input type="number" id="setPointsPer" min="1" step="10000"></label>
+                <label>قيمة النقطة (د.ع)<input type="number" id="setPointValue" min="0" step="500"></label>
+              </div>
+              <button class="btn btn-primary" id="btnSaveSettings" style="margin-top:12px">حفظ الإعدادات</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-hd"><h2>المظهر والثيمات <em>Appearance & themes</em></h2></div>
+          <div class="panel-bd">
+            <div class="theme-grid" id="themeGrid"></div>
+            <p class="theme-note">يُحفظ الثيم المختار تلقائياً ويطبق على كل الشاشات والتقارير المطبوعة.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-hd"><h2>النسخ الاحتياطي <em>Backup & restore</em></h2></div>
+          <div class="panel-bd">
+            <p class="muted">كل بياناتك (عملاء، مواعيد، فواتير، مخزون) محفوظة داخل متصفحك فقط — لا يوجد خادم.
+              صدّر نسخة احتياطية دورياً لحمايتها.</p>
+            <div class="filters" style="margin-top:12px">
+              <button class="btn btn-primary" id="btnExport2">⬇️ تصدير JSON</button>
+              <button class="btn btn-soft" id="btnImport2">⬆️ استيراد</button>
+              <button class="btn btn-danger" id="btnReset">🗑️ تصفير كل البيانات</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ===== Modal ===== -->
+<div class="modal-backdrop" id="modalBackdrop" hidden>
+  <div class="modal" id="modal" role="dialog" aria-modal="true">
+    <div class="modal-hd">
+      <h3 id="modalTitle">عنوان</h3>
+      <button class="modal-x" id="modalClose">✕</button>
+    </div>
+    <div class="modal-bd" id="modalBody"></div>
+    <div class="modal-ft" id="modalFoot"></div>
+  </div>
+</div>
+
+<!-- ===== Drawer (client / staff detail) ===== -->
+<div class="drawer-backdrop" id="drawerBackdrop" hidden>
+  <aside class="drawer" id="drawer">
+    <div class="modal-hd">
+      <h3 id="drawerTitle">تفاصيل</h3>
+      <button class="modal-x" id="drawerClose">✕</button>
+    </div>
+    <div class="drawer-bd" id="drawerBody"></div>
+  </aside>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<div id="printArea" class="print-area"></div>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/views-appointments.js"></script>
+<script src="assets/js/views-clients.js"></script>
+<script src="assets/js/views-services.js"></script>
+<script src="assets/js/views-inventory.js"></script>
+<script src="assets/js/views-finance.js"></script>
+<script src="assets/js/views-employees.js"></script>
+<script src="assets/js/views-reports.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
