@@ -4,7 +4,7 @@
 const KEY = "aureva.v1";
 
 const Store = (() => {
-  let state = null, warned = false;
+  let state = null, warned = false, persisted = null;
 
   const defaults = () => ({
     settings: {
@@ -14,6 +14,7 @@ const Store = (() => {
       pointValue: 5000,    /* قيمة النقطة بالدينار عند الاستبدال */
       theme: "salon", faceV2: 1, created: Date.now()
     },
+    admin: { pin: "", rec: "", createdAt: 0 },   /* قفل الإدارة: بصمات الرمز ورمز الاسترداد */
     clients: [], services: [], products: [], stock: [],
     staff: [], attendance: [], appointments: [], invoices: [], expenses: [],
     customServices: [], activity: [],
@@ -24,9 +25,11 @@ const Store = (() => {
     try {
       const raw = localStorage.getItem(KEY);
       const parsed = raw ? JSON.parse(raw) : null;
+      persisted = raw;   /* ما هو مخزّن فعلياً — هدف الاسترجاع عند حظر تعديل مقفل */
       const hadFace = !!(parsed && parsed.settings && parsed.settings.faceV2);
       state = parsed ? Object.assign(defaults(), parsed) : defaults();
       state.settings = Object.assign(defaults().settings, state.settings || {});
+      state.admin = Object.assign(defaults().admin, state.admin || {});
       /* ترقية مرة واحدة: الانتقال لواجهة سلون الافتراضية الجديدة */
       if (!hadFace) {
         if (state.settings.theme === "dark") state.settings.theme = "salon";
@@ -43,7 +46,17 @@ const Store = (() => {
   }
 
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    /* حماية القفل: لا يُكتب أي تعديل وهو مقفل — تُسترجع آخر حالة محفوظة */
+    const G = window.Guard;
+    if (G && G.blocks()) {
+      try { if (persisted) state = JSON.parse(persisted); } catch (e) {}
+      G.blockedSave();
+      return;
+    }
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      persisted = JSON.stringify(state);
+    }
     catch (e) {
       if (!warned) { warned = true; UI.toast("تنبيه: التخزين غير متاح — لن تُحفظ البيانات بعد إغلاق الصفحة", "warn"); }
     }
@@ -211,6 +224,7 @@ const Store = (() => {
       if (!("clients" in obj) && !("services" in obj)) throw new Error("ملف نسخة احتياطية غير صحيح");
       state = Object.assign(defaults(), obj);
       state.settings = Object.assign(defaults().settings, state.settings || {});
+      state.admin = Object.assign(defaults().admin, state.admin || {});
       if (obj.settings && !obj.settings.faceV2 && state.settings.theme === "dark") state.settings.theme = "salon";
       state.settings.faceV2 = 1;
       save();

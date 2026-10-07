@@ -67,6 +67,7 @@ try{
         <div class="search-global">
           <input type="search" id="globalSearch" placeholder="بحث سريع… (عميل / فاتورة / خدمة)">
         </div>
+        <button class="btn btn-ghost" id="btnGuard" title="قفل إدارة التعديلات — للمدير فقط">🔐 تفعيل القفل</button>
         <button class="btn btn-ghost" id="btnTheme" title="تبديل الثيم">🎨 <span id="themeName">برتقالي</span></button>
         <button class="btn btn-ghost" id="btnBackup" title="تصدير نسخة احتياطية">⬇️ تصدير</button>
         <button class="btn btn-ghost" id="btnRestore" title="استيراد نسخة احتياطية">⬆️ استيراد</button>
@@ -324,6 +325,19 @@ try{
             </div>
           </div>
         </div>
+
+        <div class="panel">
+          <div class="panel-hd"><h2>أمان وإدارة <em>Admin lock — manager only</em></h2></div>
+          <div class="panel-bd">
+            <p class="muted" id="gStat">⚙️ <b>لم يُنشأ رمز بعد</b> — سيُطلب إنشاؤه عند أول تعديل.</p>
+            <p class="muted" style="font-size:13.5px">التعديلات والحذف وتغيير الإعدادات لا تتم إلا برمز المسؤول —
+              بدون الرمز تُعرض البيانات للمشاهدة فقط. يُغلق القفل تلقائياً عند إعادة تحميل الصفحة.</p>
+            <div class="filters" style="margin-top:12px">
+              <button class="btn btn-soft" id="gBtnChange">🔑 تغيير الرمز</button>
+              <button class="btn btn-danger" id="gBtnDisable">تعطيل القفل</button>
+            </div>
+          </div>
+        </div>
       </section>
 
     </div>
@@ -366,6 +380,7 @@ try{
 <script src="assets/js/views-finance.js"></script>
 <script src="assets/js/views-employees.js"></script>
 <script src="assets/js/views-reports.js"></script>
+<script src="assets/js/guard.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

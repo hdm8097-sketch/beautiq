@@ -417,5 +417,6 @@ const App = (() => {
   document.addEventListener("DOMContentLoaded", init);
 
   return { go, render, refreshSidebar, backup, search,
-           closeDrawer: UI.closeDrawer, closeModal: UI.closeModal, settings };
+           closeDrawer: UI.closeDrawer, closeModal: UI.closeModal, settings,
+           redraw: () => render(current) };
 })();
